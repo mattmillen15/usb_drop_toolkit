@@ -1,8 +1,8 @@
 # USB Drop Toolkit
 ___
-USB Drop Toolkit is a red team utility designed for physical security assessments where USB drops are part of the engagement. This toolkit includes:
-	•	A PowerShell script to format USB drives with hidden .bat payload executed by shortcut files.
-	•	A listener to capture exfiltrated host and network details
+USB Drop Toolkit is designed for physical security assessments where USB drops are part of the engagement. Includes:
+- A PowerShell script to format USB drives with hidden .bat payload executed by shortcut files.
+- A listener to capture exfiltrated host and network details
 
 Base version of this isn't built for C2, but totally could be... just not worth the maintenance here...
 
