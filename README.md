@@ -5,6 +5,8 @@ USB Drop Toolkit is a red team utility designed for physical security assessment
 	•	A listener to capture exfiltrated host and network details
 
 Base version of this isn't built for C2, but totally could be... just not worth the maintenance here...
+
+![image](https://github.com/user-attachments/assets/74bbe1ac-e8be-45e9-96e5-a30811b770ff)
 ___
 ## Usage
 
